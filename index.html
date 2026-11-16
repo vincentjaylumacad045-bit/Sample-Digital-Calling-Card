@@ -31,11 +31,16 @@
   .grid { position:absolute; inset:0; opacity:.07; background-image:radial-gradient(var(--ink) 1.2px,transparent 1.2px); background-size:22px 22px;
           -webkit-mask-image:linear-gradient(#000,transparent 70%); mask-image:linear-gradient(#000,transparent 70%); }
   .photo { position:absolute; inset:0 0 38% 0; -webkit-mask-image:linear-gradient(#000 55%,transparent 100%); mask-image:linear-gradient(#000 55%,transparent 100%);
-           opacity:0; transform:scale(1.15); overflow:hidden; }
-  .ready .photo { animation:photoIn 1.3s var(--ease) forwards; }
-  @keyframes photoIn { to { opacity:1; transform:scale(1); } }
-  .photo-in { position:absolute; inset:-20px; background:no-repeat; background-size:cover; background-position:center var(--posy,0%);
-              transform:translate3d(var(--tx,0),calc(var(--py,0px) + var(--ty,0px)),0) scale(var(--zoom,1)); transform-origin:center top; transition:transform .25s ease-out; }
+           opacity:0; overflow:hidden; }
+  .ready .photo { animation:photoIn 1s var(--ease) forwards; }
+  .photo.done { animation:none; opacity:1; }
+  @keyframes photoIn { to { opacity:1; } }
+  /* The photo is an <img> that is really resized (never a scaled bitmap), so it stays sharp at any zoom */
+  .photo-in { position:absolute; inset:-12px; transform:translate(var(--tx,0px),calc(var(--py,0px) + var(--ty,0px))); transition:transform .25s ease-out; }
+  .photo-in img { position:absolute; display:block; max-width:none; width:calc(var(--zoom,1) * 100%); height:calc(var(--zoom,1) * 100%);
+                  left:calc((1 - var(--zoom,1)) * var(--posx,50) * 1%); top:0; object-fit:cover; object-position:calc(var(--posx,50) * 1%) calc(var(--posy,0) * 1%);
+                  filter:var(--filt,none); image-rendering:auto; pointer-events:none; -webkit-user-drag:none; user-select:none; }
+  .photo-in img[hidden] { display:none; }
   .initials { position:absolute; top:16%; left:0; right:0; text-align:center; font-size:clamp(5.5rem,30vw,8rem); font-weight:800; color:var(--ink); opacity:.1; letter-spacing:-4px; }
 
   .id { position:absolute; left:clamp(18px,6vw,26px); right:18px; bottom:clamp(92px,26vw,106px); }
@@ -147,6 +152,7 @@
   .thumb { width:84px; height:84px; border-radius:18px; background:#eef0f3 center/cover no-repeat; flex:none; border:1px solid #cbd5e1; }
   .social-row { display:flex; gap:6px; margin-top:8px; } .social-row input { flex:1; min-width:0; }
   .social-row button { width:44px; padding:0 !important; flex:none; }
+  .pbody label .val { float:right; font-weight:600; color:#94a3b8; }
   .hint { font-size:.76rem; color:#64748b; margin-top:8px; line-height:1.4; }
   .pfoot { flex:none; display:flex; gap:10px; padding:10px 16px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid #eef0f3; background:#fff; }
   .pfoot button { min-height:48px; border-radius:14px; border:none; font-weight:800; font-size:.95rem; cursor:pointer; }
@@ -184,7 +190,7 @@
   <div class="hero" id="hero">
     <div class="blob b1"></div><div class="blob b2"></div><div class="grid"></div>
     <div class="initials" id="initials"></div>
-    <div class="photo"><div class="photo-in" id="photoIn"></div></div>
+    <div class="photo" id="photoBox"><div class="photo-in" id="photoIn"><img id="photoImg" alt="" decoding="async" hidden></div></div>
     <div class="id">
       <h1 class="name" id="name"></h1>
       <p class="role pop" style="--d:450" id="title"></p>
@@ -267,10 +273,16 @@
       </div>
       <input type="file" accept="image/*" id="avatarFile" hidden>
       <input type="file" accept="image/*" capture="user" id="camFile" hidden>
-      <div class="hint">Use a portrait photo with your face in the upper half. Big phone photos are shrunk automatically.</div>
-      <label>Zoom</label><input type="range" min="100" max="220" step="1" id="zoom">
-      <label>Move photo up / down</label><input type="range" min="0" max="100" step="1" id="posy">
-      <button class="ghost" id="clearImg" style="margin-top:12px;width:100%">Remove photo</button>
+      <div class="hint">Use a portrait photo with your face in the upper half. Photos are saved in high quality (up to 2400 px), so they stay sharp.</div>
+      <label>Size (zoom) <span class="val" id="zoomV"></span></label><input type="range" min="100" max="300" step="1" id="zoom">
+      <label>Move left / right <span class="val" id="posxV"></span></label><input type="range" min="0" max="100" step="1" id="posx">
+      <label>Move up / down <span class="val" id="posyV"></span></label><input type="range" min="0" max="100" step="1" id="posy">
+      <label>Brightness <span class="val" id="brightV"></span></label><input type="range" min="60" max="150" step="1" id="bright">
+      <label>Contrast <span class="val" id="contrastV"></span></label><input type="range" min="60" max="150" step="1" id="contrast">
+      <div class="row" style="margin-top:12px">
+        <button class="ghost" id="resetImg">↺ Reset size &amp; position</button>
+        <button class="ghost" id="clearImg">Remove photo</button>
+      </div>
     </div>
 
     <div class="pane" data-pane="style">
@@ -386,10 +398,14 @@ function render() {
   $('title').textContent = card.title; $('title').style.display = card.title ? '' : 'none';
   $('about').textContent = card.about;
 
-  const pi = $('photoIn').style;
-  pi.backgroundImage = card.avatar ? `url(${card.avatar})` : '';
+  const pi = $('photoIn').style, img = $('photoImg');
+  if (card.avatar) { if (img.getAttribute('src') !== card.avatar) img.src = card.avatar; } else img.removeAttribute('src');
+  img.hidden = !card.avatar;
+  const bright = (card.photoBright ?? 100) / 100, contrast = (card.photoContrast ?? 100) / 100;
   pi.setProperty('--zoom', (card.photoZoom || 100) / 100);
-  pi.setProperty('--posy', (card.photoY || 0) + '%');
+  pi.setProperty('--posx', card.photoX ?? 50);
+  pi.setProperty('--posy', card.photoY || 0);
+  pi.setProperty('--filt', (bright === 1 && contrast === 1) ? 'none' : `brightness(${bright}) contrast(${contrast})`);
   $('thumb').style.backgroundImage = card.avatar ? `url(${card.avatar})` : '';
   $('initials').textContent = card.avatar ? '' : (card.name || '').split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   document.title = (card.name || 'Contact') + ' — Digital Card';
@@ -435,12 +451,12 @@ function observe() {
   if (!io) io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .12 });
   document.querySelectorAll('.reveal:not(.in)').forEach((el) => io.observe(el));
 }
-addEventListener('scroll', () => document.documentElement.style.setProperty('--py', Math.min(scrollY * .25, 80) + 'px'), { passive: true });
+addEventListener('scroll', () => document.documentElement.style.setProperty('--py', Math.round(Math.min(scrollY * .25, 80)) + 'px'), { passive: true });
 $('hero').addEventListener('pointermove', (e) => {
   if (e.pointerType !== 'mouse') return;
   const b = $('hero').getBoundingClientRect();
   const x = (e.clientX - b.left) / b.width - .5, y = (e.clientY - b.top) / b.height - .5;
-  const s = $('photoIn').style; s.setProperty('--tx', x * -14 + 'px'); s.setProperty('--ty', y * -10 + 'px');
+  const s = $('photoIn').style; s.setProperty('--tx', Math.round(x * -14) + 'px'); s.setProperty('--ty', Math.round(y * -10) + 'px');
 });
 
 /* ---------- Dock actions ---------- */
@@ -465,11 +481,19 @@ $('qrClose').onclick = () => $('qrModal').classList.remove('show');
 $('qrModal').onclick = (e) => { if (e.target.id === 'qrModal') $('qrModal').classList.remove('show'); };
 
 /* ---------- Editor (owner only) ---------- */
+function syncPhotoControls() {
+  $('zoom').value = card.photoZoom || 100;
+  $('posx').value = card.photoX ?? 50;
+  $('posy').value = card.photoY || 0;
+  $('bright').value = card.photoBright ?? 100;
+  $('contrast').value = card.photoContrast ?? 100;
+  $('zoomV').textContent = $('zoom').value + '%'; $('posxV').textContent = $('posx').value + '%'; $('posyV').textContent = $('posy').value + '%';
+  $('brightV').textContent = $('bright').value + '%'; $('contrastV').textContent = $('contrast').value + '%';
+}
 function fillForm() {
   document.querySelectorAll('[data-f]').forEach((i) => (i.value = card[i.dataset.f] || ''));
   document.querySelectorAll('[data-t]').forEach((i) => (i.value = card.theme[i.dataset.t]));
-  $('zoom').value = card.photoZoom || 100;
-  $('posy').value = card.photoY || 0;
+  syncPhotoControls();
   renderSocialEditor();
 }
 const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -490,8 +514,11 @@ document.querySelectorAll('[data-t]').forEach((i) => i.addEventListener('input',
 document.querySelectorAll('[data-theme]').forEach((b) => b.onclick = () => { Object.assign(card.theme, THEMES[b.dataset.theme]); fillForm(); render(); });
 $('addSocial').onclick = () => { card.socials.push({ label: '', url: '' }); renderSocialEditor(); };
 $('clearImg').onclick = () => { card.avatar = ''; render(); toast('Photo removed — press Save to publish'); };
-$('zoom').oninput = (e) => { card.photoZoom = +e.target.value; render(); };
-$('posy').oninput = (e) => { card.photoY = +e.target.value; render(); };
+[['zoom','photoZoom'],['posx','photoX'],['posy','photoY'],['bright','photoBright'],['contrast','photoContrast']].forEach(([id, key]) => {
+  $(id).oninput = (e) => { card[key] = +e.target.value; syncPhotoControls(); render(); };
+});
+$('resetImg').onclick = () => { card.photoZoom = 100; card.photoX = 50; card.photoY = 0; card.photoBright = 100; card.photoContrast = 100; syncPhotoControls(); render(); };
+$('photoBox').addEventListener('animationend', (e) => e.currentTarget.classList.add('done'));
 
 /* Tabs */
 document.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => {
@@ -512,23 +539,36 @@ async function loadBitmap(file) {
     });
   }
 }
-async function shrink(file, max) {
+/* High-quality resize: step down by halves + high-quality smoothing, so photos are never soft */
+async function shrink(file, max, quality) {
   const img = await loadBitmap(file);
   const w = img.width || img.naturalWidth, h = img.height || img.naturalHeight;
   const k = Math.min(1, max / Math.max(w, h));
-  const c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
-  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('Could not read the image'))), 'image/jpeg', 0.88));
+  const tw = Math.max(1, Math.round(w * k)), th = Math.max(1, Math.round(h * k));
+  let src = img, cw = w, ch = h;
+  while (cw / 2 >= tw && ch / 2 >= th) {
+    const step = document.createElement('canvas'); step.width = Math.round(cw / 2); step.height = Math.round(ch / 2);
+    const sx = step.getContext('2d'); sx.imageSmoothingEnabled = true; sx.imageSmoothingQuality = 'high';
+    sx.drawImage(src, 0, 0, step.width, step.height);
+    src = step; cw = step.width; ch = step.height;
+  }
+  const c = document.createElement('canvas'); c.width = tw; c.height = th;
+  const g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  g.fillStyle = '#fff'; g.fillRect(0, 0, tw, th);              // PNGs with transparency: no black background
+  g.drawImage(src, 0, 0, tw, th);
+  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('Could not read the image'))), 'image/jpeg', quality));
 }
 async function handleFile(file) {
   if (!file) return;
   try {
     toast('Uploading photo…');
-    const blob = await shrink(file, 1200);
+    let blob = await shrink(file, 2400, 0.93);
+    if (blob.size > 3.8 * 1024 * 1024) blob = await shrink(file, 2000, 0.85);   // stay under host upload limit
     const r = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-password': password, 'content-type': 'image/jpeg' }, body: blob });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'Upload failed');
-    card.avatar = j.url; render(); toast('Photo ready ✓ Adjust it, then press Save');
+    card.avatar = j.url; card.photoZoom = 100; card.photoX = 50; card.photoY = 0; syncPhotoControls(); render();
+    toast('Photo ready ✓ Adjust it, then press Save');
   } catch (e) { toast(e.message || 'Upload failed', true); }
 }
 $('pickBtn').onclick = () => $('avatarFile').click();
