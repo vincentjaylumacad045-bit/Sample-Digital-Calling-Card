@@ -281,15 +281,16 @@
       </div>
       <input type="file" accept="image/*" id="avatarFile" hidden>
       <input type="file" accept="image/*" capture="user" id="camFile" hidden>
-      <div class="hint">Use a portrait photo with your face in the upper half. Photos are saved in high quality (up to 2560 px), so they stay sharp.</div>
-      <label>Size (zoom) <span class="val" id="zoomV"></span></label><input type="range" min="100" max="300" step="1" id="zoom">
+      <div class="hint">Use a portrait photo with your face in the upper half. New photos show whole (not zoomed). Use Zoom or Fill frame if you want it closer.</div>
+      <label>Size (zoom) <span class="val" id="zoomV"></span></label><input type="range" min="100" max="400" step="1" id="zoom">
       <label>Move left / right <span class="val" id="posxV"></span></label><input type="range" min="0" max="100" step="1" id="posx">
       <label>Move up / down <span class="val" id="posyV"></span></label><input type="range" min="0" max="100" step="1" id="posy">
       <label>Bottom fade <span class="val" id="fadeV"></span></label><input type="range" min="0" max="80" step="1" id="fade">
       <label>Brightness <span class="val" id="brightV"></span></label><input type="range" min="60" max="150" step="1" id="bright">
       <label>Contrast <span class="val" id="contrastV"></span></label><input type="range" min="60" max="150" step="1" id="contrast">
       <div class="row" style="margin-top:12px">
-        <button class="ghost" id="resetImg">↺ Reset size &amp; position</button>
+        <button class="ghost" id="fillImg">⤢ Fill frame</button>
+        <button class="ghost" id="resetImg">↺ Fit whole photo</button>
         <button class="ghost" id="clearImg">Remove photo</button>
       </div>
     </div>
@@ -395,7 +396,7 @@ function photoGeom() {
   const iw = img.naturalWidth, ih = img.naturalHeight, W = box.offsetWidth, H = box.offsetHeight;
   if (!iw || !ih || !W || !H) return null;
   const z = (card.photoZoom || 100) / 100, ia = iw / ih, ba = W / H;
-  return { iw, ih, ba, wr: z * Math.max(1, ia / ba), hr: z * Math.max(1, ba / ia) };
+  return { iw, ih, ba, fill: Math.max(ia / ba, ba / ia), wr: z * Math.min(1, ia / ba), hr: z * Math.min(1, ba / ia) };
 }
 function layoutPhoto() {
   if (!card) return;
@@ -557,6 +558,7 @@ $('clearImg').onclick = () => { card.avatar = ''; render(); toast('Photo removed
 [['zoom','photoZoom'],['posx','photoX'],['posy','photoY'],['bright','photoBright'],['contrast','photoContrast'],['fade','photoFade']].forEach(([id, key]) => {
   $(id).oninput = (e) => { card[key] = +e.target.value; syncPhotoControls(); renderPhoto(); };
 });
+$('fillImg').onclick = () => { const g = photoGeom(); if (!g) return; card.photoZoom = Math.min(400, Math.ceil(g.fill * 100)); card.photoX = 50; card.photoY = 0; syncPhotoControls(); renderPhoto(); };
 $('resetImg').onclick = () => { card.photoZoom = 100; card.photoX = 50; card.photoY = 0; card.photoBright = 100; card.photoContrast = 100; card.photoFade = 25; syncPhotoControls(); renderPhoto(); };
 (function () {
   const pv = $('pv'), ptrs = new Map(); let pinch = 0;
@@ -575,13 +577,13 @@ $('resetImg').onclick = () => { card.photoZoom = 100; card.photoX = 50; card.pho
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (ptrs.size === 2) {
       const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
-      if (pinch) card.photoZoom = clamp(Math.round((card.photoZoom || 100) * d / pinch), 100, 300);
+      if (pinch) card.photoZoom = clamp(Math.round((card.photoZoom || 100) * d / pinch), 100, 400);
       pinch = d;
     }
     apply();
   });
   ['pointerup', 'pointercancel'].forEach((t) => pv.addEventListener(t, (e) => { ptrs.delete(e.pointerId); pinch = 0; }));
-  pv.addEventListener('wheel', (e) => { e.preventDefault(); card.photoZoom = clamp(Math.round((card.photoZoom || 100) - e.deltaY * .2), 100, 300); apply(); }, { passive: false });
+  pv.addEventListener('wheel', (e) => { e.preventDefault(); card.photoZoom = clamp(Math.round((card.photoZoom || 100) - e.deltaY * .2), 100, 400); apply(); }, { passive: false });
 })();
 $('photoBox').addEventListener('animationend', (e) => e.currentTarget.classList.add('done'));
 
