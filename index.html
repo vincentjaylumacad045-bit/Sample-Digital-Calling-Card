@@ -37,10 +37,8 @@
   @keyframes photoIn { to { opacity:1; } }
   /* The photo is an <img> that is really resized (never a scaled bitmap), so it stays sharp at any zoom */
   .photo-in { position:absolute; inset:-12px; transform:translate(var(--tx,0px),calc(var(--py,0px) + var(--ty,0px))); transition:transform .25s ease-out; }
-  .photo-in img { position:absolute; display:block; max-width:none; width:calc(var(--zoom,1) * 100%); height:calc(var(--zoom,1) * 100%);
-                  left:calc((1 - var(--zoom,1)) * var(--posx,50) * 1%); top:0; object-fit:cover; object-position:calc(var(--posx,50) * 1%) calc(var(--posy,0) * 1%);
-                  filter:var(--filt,none); image-rendering:auto; pointer-events:none; -webkit-user-drag:none; user-select:none; }
-  .photo-in img[hidden] { display:none; }
+  .photo-in img, .pv img { position:absolute; display:block; max-width:none; left:0; top:0; image-rendering:auto; filter:var(--filt,none); pointer-events:none; -webkit-user-drag:none; user-select:none; }
+  .photo-in img[hidden], .pv img[hidden] { display:none; }
   .initials { position:absolute; top:16%; left:0; right:0; text-align:center; font-size:clamp(5.5rem,30vw,8rem); font-weight:800; color:var(--ink); opacity:.1; letter-spacing:-4px; }
 
   .id { position:absolute; left:clamp(18px,6vw,26px); right:18px; bottom:clamp(92px,26vw,106px); }
@@ -153,6 +151,11 @@
   .social-row { display:flex; gap:6px; margin-top:8px; } .social-row input { flex:1; min-width:0; }
   .social-row button { width:44px; padding:0 !important; flex:none; }
   .pbody label .val { float:right; font-weight:600; color:#94a3b8; }
+  .pv-wrap { position:sticky; top:0; z-index:3; background:#fff; margin:0 -16px; padding:10px 16px 8px; border-bottom:1px solid #eef0f3; }
+  .pv { position:relative; height:170px; max-width:100%; margin:0 auto; border-radius:16px; overflow:hidden; background:linear-gradient(180deg,var(--accent),var(--bg)); touch-action:none; cursor:grab; box-shadow:0 0 0 1px #cbd5e1; }
+  .pv:active { cursor:grabbing; }
+  .pv-hint { text-align:center; font-size:.72rem; color:#64748b; margin-top:6px; line-height:1.3; }
+  .pv-hint.warn { color:#b45309; font-weight:700; } .pv-hint.good { color:#15803d; font-weight:700; }
   .hint { font-size:.76rem; color:#64748b; margin-top:8px; line-height:1.4; }
   .pfoot { flex:none; display:flex; gap:10px; padding:10px 16px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid #eef0f3; background:#fff; }
   .pfoot button { min-height:48px; border-radius:14px; border:none; font-weight:800; font-size:.95rem; cursor:pointer; }
@@ -263,6 +266,11 @@
     </div>
 
     <div class="pane" data-pane="photo">
+      <div class="pv-wrap" id="pvWrap" hidden>
+        <div class="pv" id="pv"><img id="pvImg" alt="" hidden></div>
+        <div class="pv-hint">Drag to move · pinch or scroll to zoom</div>
+        <div class="pv-hint" id="pvQ"></div>
+      </div>
       <label>Profile photo</label>
       <div class="photo-up">
         <div class="thumb" id="thumb"></div>
@@ -273,7 +281,7 @@
       </div>
       <input type="file" accept="image/*" id="avatarFile" hidden>
       <input type="file" accept="image/*" capture="user" id="camFile" hidden>
-      <div class="hint">Use a portrait photo with your face in the upper half. Photos are saved in high quality (up to 2400 px), so they stay sharp.</div>
+      <div class="hint">Use a portrait photo with your face in the upper half. Photos are saved in high quality (up to 2560 px), so they stay sharp.</div>
       <label>Size (zoom) <span class="val" id="zoomV"></span></label><input type="range" min="100" max="300" step="1" id="zoom">
       <label>Move left / right <span class="val" id="posxV"></span></label><input type="range" min="0" max="100" step="1" id="posx">
       <label>Move up / down <span class="val" id="posyV"></span></label><input type="range" min="0" max="100" step="1" id="posy">
@@ -380,6 +388,42 @@ function toast(msg, bad) {
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2800);
 }
 
+/* ---------- Photo framing: exact, in %, so the image is always drawn at its real size (sharp) ---------- */
+function photoGeom() {
+  const img = $('photoImg'), box = $('photoIn');
+  const iw = img.naturalWidth, ih = img.naturalHeight, W = box.offsetWidth, H = box.offsetHeight;
+  if (!iw || !ih || !W || !H) return null;
+  const z = (card.photoZoom || 100) / 100, ia = iw / ih, ba = W / H;
+  return { iw, ih, ba, wr: z * Math.max(1, ia / ba), hr: z * Math.max(1, ba / ia) };
+}
+function layoutPhoto() {
+  if (!card) return;
+  const g = photoGeom(); if (!g) return;
+  const px = card.photoX ?? 50, py = card.photoY || 0;
+  [$('photoImg'), $('pvImg')].forEach((im) => {
+    im.style.width = g.wr * 100 + '%'; im.style.height = g.hr * 100 + '%';
+    im.style.left = (1 - g.wr) * px + '%'; im.style.top = (1 - g.hr) * py + '%';
+  });
+  $('pv').style.aspectRatio = g.ba;
+  const heroW = Math.min(document.documentElement.clientWidth, 430) + 24;
+  const ratio = g.iw / (g.wr * heroW * Math.min(window.devicePixelRatio || 1, 3));
+  const q = $('pvQ'); q.className = 'pv-hint ' + (ratio >= 1 ? 'good' : ratio >= .7 ? '' : 'warn');
+  q.textContent = ratio >= 1 ? `✓ Sharp (${g.iw}×${g.ih}px)`
+    : ratio >= .7 ? `Slightly soft at this zoom (${g.iw}×${g.ih}px) — zoom out a little`
+    : `Low resolution (${g.iw}×${g.ih}px) — zoom out or upload a larger photo`;
+}
+function renderPhoto() {
+  const img = $('photoImg'), pv = $('pvImg');
+  const bright = (card.photoBright ?? 100) / 100, contrast = (card.photoContrast ?? 100) / 100;
+  document.documentElement.style.setProperty('--filt', (bright === 1 && contrast === 1) ? 'none' : `brightness(${bright}) contrast(${contrast})`);
+  if (card.avatar) { if (img.getAttribute('src') !== card.avatar) { img.src = card.avatar; pv.src = card.avatar; } }
+  else { img.removeAttribute('src'); pv.removeAttribute('src'); }
+  img.hidden = pv.hidden = !card.avatar; $('pvWrap').hidden = !card.avatar;
+  layoutPhoto();
+}
+$('photoImg').addEventListener('load', layoutPhoto);
+new ResizeObserver(layoutPhoto).observe($('photoIn'));
+
 /* ---------- Render ---------- */
 function render() {
   const t = card.theme, r = document.documentElement.style;
@@ -398,14 +442,7 @@ function render() {
   $('title').textContent = card.title; $('title').style.display = card.title ? '' : 'none';
   $('about').textContent = card.about;
 
-  const pi = $('photoIn').style, img = $('photoImg');
-  if (card.avatar) { if (img.getAttribute('src') !== card.avatar) img.src = card.avatar; } else img.removeAttribute('src');
-  img.hidden = !card.avatar;
-  const bright = (card.photoBright ?? 100) / 100, contrast = (card.photoContrast ?? 100) / 100;
-  pi.setProperty('--zoom', (card.photoZoom || 100) / 100);
-  pi.setProperty('--posx', card.photoX ?? 50);
-  pi.setProperty('--posy', card.photoY || 0);
-  pi.setProperty('--filt', (bright === 1 && contrast === 1) ? 'none' : `brightness(${bright}) contrast(${contrast})`);
+  renderPhoto();
   $('thumb').style.backgroundImage = card.avatar ? `url(${card.avatar})` : '';
   $('initials').textContent = card.avatar ? '' : (card.name || '').split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   document.title = (card.name || 'Contact') + ' — Digital Card';
@@ -515,9 +552,34 @@ document.querySelectorAll('[data-theme]').forEach((b) => b.onclick = () => { Obj
 $('addSocial').onclick = () => { card.socials.push({ label: '', url: '' }); renderSocialEditor(); };
 $('clearImg').onclick = () => { card.avatar = ''; render(); toast('Photo removed — press Save to publish'); };
 [['zoom','photoZoom'],['posx','photoX'],['posy','photoY'],['bright','photoBright'],['contrast','photoContrast']].forEach(([id, key]) => {
-  $(id).oninput = (e) => { card[key] = +e.target.value; syncPhotoControls(); render(); };
+  $(id).oninput = (e) => { card[key] = +e.target.value; syncPhotoControls(); renderPhoto(); };
 });
-$('resetImg').onclick = () => { card.photoZoom = 100; card.photoX = 50; card.photoY = 0; card.photoBright = 100; card.photoContrast = 100; syncPhotoControls(); render(); };
+$('resetImg').onclick = () => { card.photoZoom = 100; card.photoX = 50; card.photoY = 0; card.photoBright = 100; card.photoContrast = 100; syncPhotoControls(); renderPhoto(); };
+(function () {
+  const pv = $('pv'), ptrs = new Map(); let pinch = 0;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const apply = () => { syncPhotoControls(); renderPhoto(); };
+  pv.addEventListener('pointerdown', (e) => { pv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); pinch = 0; });
+  pv.addEventListener('pointermove', (e) => {
+    const p = ptrs.get(e.pointerId); if (!p) return;
+    const g = photoGeom(); if (!g) return;
+    const r = pv.getBoundingClientRect();
+    if (ptrs.size === 1) {
+      const fx = (e.clientX - p.x) / r.width, fy = (e.clientY - p.y) / r.height;
+      if (Math.abs(1 - g.wr) > .001) card.photoX = clamp((card.photoX ?? 50) + fx * 100 / (1 - g.wr), 0, 100);
+      if (Math.abs(1 - g.hr) > .001) card.photoY = clamp((card.photoY || 0) + fy * 100 / (1 - g.hr), 0, 100);
+    }
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinch) card.photoZoom = clamp(Math.round((card.photoZoom || 100) * d / pinch), 100, 300);
+      pinch = d;
+    }
+    apply();
+  });
+  ['pointerup', 'pointercancel'].forEach((t) => pv.addEventListener(t, (e) => { ptrs.delete(e.pointerId); pinch = 0; }));
+  pv.addEventListener('wheel', (e) => { e.preventDefault(); card.photoZoom = clamp(Math.round((card.photoZoom || 100) - e.deltaY * .2), 100, 300); apply(); }, { passive: false });
+})();
 $('photoBox').addEventListener('animationend', (e) => e.currentTarget.classList.add('done'));
 
 /* Tabs */
@@ -562,8 +624,8 @@ async function handleFile(file) {
   if (!file) return;
   try {
     toast('Uploading photo…');
-    let blob = await shrink(file, 2400, 0.93);
-    if (blob.size > 3.8 * 1024 * 1024) blob = await shrink(file, 2000, 0.85);   // stay under host upload limit
+    let blob = await shrink(file, 2560, 0.95);
+    if (blob.size > 3.8 * 1024 * 1024) blob = await shrink(file, 2000, 0.88);   // stay under host upload limit
     const r = await fetch('/api/upload', { method: 'POST', headers: { 'x-admin-password': password, 'content-type': 'image/jpeg' }, body: blob });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'Upload failed');
