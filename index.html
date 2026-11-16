@@ -30,7 +30,7 @@
   @keyframes float { 0%,100% { transform:translate(0,0) scale(1); } 50% { transform:translate(24px,32px) scale(1.15); } }
   .grid { position:absolute; inset:0; opacity:.07; background-image:radial-gradient(var(--ink) 1.2px,transparent 1.2px); background-size:22px 22px;
           -webkit-mask-image:linear-gradient(#000,transparent 70%); mask-image:linear-gradient(#000,transparent 70%); }
-  .photo { position:absolute; inset:0 0 38% 0; -webkit-mask-image:linear-gradient(#000 55%,transparent 100%); mask-image:linear-gradient(#000 55%,transparent 100%);
+  .photo { position:absolute; inset:0 0 38% 0; -webkit-mask-image:linear-gradient(#000 calc(100% - var(--fade,25) * 1%),transparent 100%); mask-image:linear-gradient(#000 calc(100% - var(--fade,25) * 1%),transparent 100%);
            opacity:0; overflow:hidden; }
   .ready .photo { animation:photoIn 1s var(--ease) forwards; }
   .photo.done { animation:none; opacity:1; }
@@ -285,6 +285,7 @@
       <label>Size (zoom) <span class="val" id="zoomV"></span></label><input type="range" min="100" max="300" step="1" id="zoom">
       <label>Move left / right <span class="val" id="posxV"></span></label><input type="range" min="0" max="100" step="1" id="posx">
       <label>Move up / down <span class="val" id="posyV"></span></label><input type="range" min="0" max="100" step="1" id="posy">
+      <label>Bottom fade <span class="val" id="fadeV"></span></label><input type="range" min="0" max="80" step="1" id="fade">
       <label>Brightness <span class="val" id="brightV"></span></label><input type="range" min="60" max="150" step="1" id="bright">
       <label>Contrast <span class="val" id="contrastV"></span></label><input type="range" min="60" max="150" step="1" id="contrast">
       <div class="row" style="margin-top:12px">
@@ -415,6 +416,7 @@ function layoutPhoto() {
 function renderPhoto() {
   const img = $('photoImg'), pv = $('pvImg');
   const bright = (card.photoBright ?? 100) / 100, contrast = (card.photoContrast ?? 100) / 100;
+  document.documentElement.style.setProperty('--fade', card.photoFade ?? 25);
   document.documentElement.style.setProperty('--filt', (bright === 1 && contrast === 1) ? 'none' : `brightness(${bright}) contrast(${contrast})`);
   if (card.avatar) { if (img.getAttribute('src') !== card.avatar) { img.src = card.avatar; pv.src = card.avatar; } }
   else { img.removeAttribute('src'); pv.removeAttribute('src'); }
@@ -524,8 +526,9 @@ function syncPhotoControls() {
   $('posy').value = card.photoY || 0;
   $('bright').value = card.photoBright ?? 100;
   $('contrast').value = card.photoContrast ?? 100;
+  $('fade').value = card.photoFade ?? 25;
   $('zoomV').textContent = $('zoom').value + '%'; $('posxV').textContent = $('posx').value + '%'; $('posyV').textContent = $('posy').value + '%';
-  $('brightV').textContent = $('bright').value + '%'; $('contrastV').textContent = $('contrast').value + '%';
+  $('brightV').textContent = $('bright').value + '%'; $('contrastV').textContent = $('contrast').value + '%'; $('fadeV').textContent = $('fade').value + '%';
 }
 function fillForm() {
   document.querySelectorAll('[data-f]').forEach((i) => (i.value = card[i.dataset.f] || ''));
@@ -551,10 +554,10 @@ document.querySelectorAll('[data-t]').forEach((i) => i.addEventListener('input',
 document.querySelectorAll('[data-theme]').forEach((b) => b.onclick = () => { Object.assign(card.theme, THEMES[b.dataset.theme]); fillForm(); render(); });
 $('addSocial').onclick = () => { card.socials.push({ label: '', url: '' }); renderSocialEditor(); };
 $('clearImg').onclick = () => { card.avatar = ''; render(); toast('Photo removed — press Save to publish'); };
-[['zoom','photoZoom'],['posx','photoX'],['posy','photoY'],['bright','photoBright'],['contrast','photoContrast']].forEach(([id, key]) => {
+[['zoom','photoZoom'],['posx','photoX'],['posy','photoY'],['bright','photoBright'],['contrast','photoContrast'],['fade','photoFade']].forEach(([id, key]) => {
   $(id).oninput = (e) => { card[key] = +e.target.value; syncPhotoControls(); renderPhoto(); };
 });
-$('resetImg').onclick = () => { card.photoZoom = 100; card.photoX = 50; card.photoY = 0; card.photoBright = 100; card.photoContrast = 100; syncPhotoControls(); renderPhoto(); };
+$('resetImg').onclick = () => { card.photoZoom = 100; card.photoX = 50; card.photoY = 0; card.photoBright = 100; card.photoContrast = 100; card.photoFade = 25; syncPhotoControls(); renderPhoto(); };
 (function () {
   const pv = $('pv'), ptrs = new Map(); let pinch = 0;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -602,6 +605,19 @@ async function loadBitmap(file) {
   }
 }
 /* High-quality resize: step down by halves + high-quality smoothing, so photos are never soft */
+function sharpen(g, w, h, a) {
+  try {
+    const im = g.getImageData(0, 0, w, h), d = im.data, o = new Uint8ClampedArray(d), c = 1 + 4 * a;
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      const i = (y * w + x) * 4;
+      for (let k = 0; k < 3; k++) {
+        const v = o[i + k] * c - a * (o[i - 4 + k] + o[i + 4 + k] + o[i - w * 4 + k] + o[i + w * 4 + k]);
+        d[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+      }
+    }
+    g.putImageData(im, 0, 0);
+  } catch (e) { /* canvas too large for this device: skip sharpening */ }
+}
 async function shrink(file, max, quality) {
   const img = await loadBitmap(file);
   const w = img.width || img.naturalWidth, h = img.height || img.naturalHeight;
@@ -618,6 +634,7 @@ async function shrink(file, max, quality) {
   const g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
   g.fillStyle = '#fff'; g.fillRect(0, 0, tw, th);              // PNGs with transparency: no black background
   g.drawImage(src, 0, 0, tw, th);
+  sharpen(g, tw, th, 0.35);
   return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('Could not read the image'))), 'image/jpeg', quality));
 }
 async function handleFile(file) {
