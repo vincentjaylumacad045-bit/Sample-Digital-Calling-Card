@@ -12,3 +12,12 @@ An animated one-page contact card. Everyone can view it. Only you (with your pas
 ## Quick facts
 - Edit link: `https://your-site.vercel.app/#edit`
 - Required: a Vercel Blob store connected to the project, plus an `ADMIN_PASSWORD` environment variable.
+
+## Project structure
+```
+index.html        page markup only
+css/              base · hero · sections · dock · overlays · editor
+js/               icons → state → photo → render → dock → editor → upload → actions → boot
+api/              card.js (read/save card) · upload.js (photo upload)
+```
+Scripts load in the order above (see `index.html`). Corner sizes are set once in `css/base.css` (`--r-xs`, `--r-sm`, `--r-md`, `--r-lg`).
