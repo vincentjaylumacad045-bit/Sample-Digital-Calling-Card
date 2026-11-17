@@ -3,7 +3,7 @@
 function render() {
   const t = card.theme, r = document.documentElement.style;
   $('app').classList.remove('layout-classic','layout-centered','layout-minimal','layout-editorial');
-  $('app').classList.add('layout-' + (['classic','centered','minimal','editorial'].includes(card.layout) ? card.layout : 'classic'));
+  $('app').classList.add('layout-' + (['classic','centered','minimal','editorial'].includes(card.layout) ? card.layout : 'centered'));
   r.setProperty('--bg', t.bg); r.setProperty('--accent', t.accent);
   r.setProperty('--ink', t.ink); r.setProperty('--text', t.text); r.setProperty('--font', t.font);
   document.querySelector('meta[name=theme-color]').content = t.bg;

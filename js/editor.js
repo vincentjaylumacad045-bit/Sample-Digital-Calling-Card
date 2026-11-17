@@ -14,7 +14,7 @@ function fillForm() {
   document.querySelectorAll('[data-f]').forEach((i) => (i.value = card[i.dataset.f] || ''));
   document.querySelectorAll('[data-t]').forEach((i) => (i.value = card.theme[i.dataset.t]));
   syncPhotoControls();
-  $('layoutSelect').value = card.layout || 'classic';
+  $('layoutSelect').value = card.layout || 'centered';
   renderSocialEditor();
 }
 const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');

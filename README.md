@@ -29,3 +29,6 @@ Scripts load in the order above (see `index.html`). Corner sizes are set once in
 - Four selectable layouts: Classic, Centered, Minimal, and Editorial.
 - Additional typography choices (DM Sans, Manrope, Montserrat, Space Grotesk, Playfair Display, and Roboto Mono).
 - Live preview updates while editing. Profile image sizing remains adjustable with the zoom slider, drag positioning, and touch pinch-to-zoom controls.
+
+
+The default public card layout is now **Centered Profile**, so the redesigned appearance is visible immediately on first load (not only after opening the editor). Older saved cards without a layout also fall back to Centered Profile.
