@@ -44,3 +44,31 @@
 .pop { opacity:0; }
 .ready .pop { animation:pop .6s cubic-bezier(.34,1.56,.64,1) forwards; animation-delay:calc(var(--d) * 1ms); }
 @keyframes pop { 0% { opacity:0; transform:scale(.3) translateY(20px); } 100% { opacity:1; transform:none; } }
+
+/* Live-selectable profile layouts */
+.layout-centered .hero { height:clamp(450px,125vw,540px); }
+.layout-centered .photo { inset:28px auto auto 50%; width:clamp(150px,46vw,190px); height:clamp(150px,46vw,190px); transform:translateX(-50%); border-radius:50%; border:5px solid rgba(255,255,255,.72); -webkit-mask-image:none; mask-image:none; box-shadow:0 16px 36px rgba(0,0,0,.25); }
+.layout-centered .photo-in { inset:0; transform:none; }
+.layout-centered .id { left:20px; right:20px; bottom:105px; text-align:center; }
+.layout-centered .name { font-size:clamp(1.8rem,8vw,2.45rem); }
+.layout-centered .role { margin-left:auto; margin-right:auto; }
+.layout-centered .actions { justify-content:center; }
+.layout-centered .initials { top:18%; font-size:clamp(6rem,34vw,9rem); }
+.layout-minimal .hero { height:clamp(370px,100vw,440px); background:var(--bg); }
+.layout-minimal .blob, .layout-minimal .grid { display:none; }
+.layout-minimal .photo { inset:0 0 36% 0; opacity:.72; -webkit-mask-image:linear-gradient(#000 45%,transparent 100%); mask-image:linear-gradient(#000 45%,transparent 100%); }
+.layout-minimal .id { bottom:102px; }
+.layout-minimal .name { color:var(--text); letter-spacing:-1.5px; }
+.layout-minimal .role { color:var(--text); background:color-mix(in srgb,var(--accent) 28%,transparent); }
+.layout-minimal .actions .circle { background:var(--accent); color:var(--ink); }
+.layout-editorial .hero { height:clamp(430px,112vw,500px); background:linear-gradient(115deg,var(--accent) 0 48%,var(--bg) 48% 100%); }
+.layout-editorial .blob { opacity:.35; }
+.layout-editorial .photo { inset:0 0 0 42%; opacity:.88; -webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 28%); mask-image:linear-gradient(90deg,transparent 0%,#000 28%); }
+.layout-editorial .id { left:20px; right:45%; bottom:112px; }
+.layout-editorial .name { font-size:clamp(1.65rem,7.5vw,2.2rem); }
+.layout-editorial .role { font-size:.78rem; padding:6px 9px; }
+.layout-editorial .actions { left:20px; right:42%; gap:7px; }
+.layout-editorial .circle { width:42px; height:42px; }
+.layout-centered .section { border-radius:22px; }
+.layout-minimal .section { background:color-mix(in srgb,var(--accent) 14%,var(--bg)); color:var(--text); border-color:color-mix(in srgb,var(--accent) 35%,transparent); box-shadow:none; }
+.layout-editorial .section { border-radius:8px 20px 8px 20px; }

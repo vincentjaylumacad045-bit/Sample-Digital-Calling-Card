@@ -7,7 +7,7 @@
 <title>Digital Contact Card</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/hero.css">
 <link rel="stylesheet" href="css/sections.css">
@@ -111,8 +111,8 @@
       </div>
       <input type="file" accept="image/*" id="avatarFile" hidden>
       <input type="file" accept="image/*" capture="user" id="camFile" hidden>
-      <div class="hint">Use a portrait photo with your face in the upper half. New photos show whole (not zoomed). Small photos are enlarged and sharpened automatically; <b>Best sharpness</b> picks the biggest size that stays crisp.</div>
-      <label>Size (zoom) <span class="val" id="zoomV"></span></label><input type="range" min="30" max="400" step="1" id="zoom">
+      <div class="hint">Resize with the image size slider, drag to reposition, or pinch on touch screens. Use a portrait photo with your face in the upper half. New photos show whole (not zoomed). Small photos are enlarged and sharpened automatically; <b>Best sharpness</b> picks the biggest size that stays crisp.</div>
+      <label>Profile image size / zoom <span class="val" id="zoomV"></span></label><input type="range" min="30" max="400" step="1" id="zoom">
       <label>Move left / right <span class="val" id="posxV"></span></label><input type="range" min="0" max="100" step="1" id="posx">
       <label>Move up / down <span class="val" id="posyV"></span></label><input type="range" min="0" max="100" step="1" id="posy">
       <label>Bottom fade <span class="val" id="fadeV"></span></label><input type="range" min="0" max="80" step="1" id="fade">
@@ -132,8 +132,24 @@
         <button data-theme="lime" style="background:linear-gradient(135deg,#c6f432 50%,#0b1437 50%)"></button>
         <button data-theme="sky" style="background:linear-gradient(135deg,#38bdf8 50%,#0a1a2f 50%)"></button>
         <button data-theme="rose" style="background:linear-gradient(135deg,#fb7185 50%,#2a0a1a 50%)"></button>
-        <button data-theme="gold" style="background:linear-gradient(135deg,#fbbf24 50%,#1c1405 50%)"></button>
+        <button data-theme="gold" title="Gold" style="background:linear-gradient(135deg,#fbbf24 50%,#1c1405 50%)"></button>
+        <button data-theme="ocean" title="Ocean" style="background:linear-gradient(135deg,#22d3ee 50%,#071e2d 50%)"></button>
+        <button data-theme="violet" title="Violet" style="background:linear-gradient(135deg,#a78bfa 50%,#1b1235 50%)"></button>
+        <button data-theme="coral" title="Coral" style="background:linear-gradient(135deg,#fb8b72 50%,#2b1114 50%)"></button>
+        <button data-theme="mint" title="Mint" style="background:linear-gradient(135deg,#6ee7b7 50%,#092a25 50%)"></button>
+        <button data-theme="monochrome" title="Monochrome" style="background:linear-gradient(135deg,#e5e7eb 50%,#151515 50%)"></button>
+        <button data-theme="royal" title="Royal" style="background:linear-gradient(135deg,#f0abfc 50%,#101747 50%)"></button>
+        <button data-theme="orange" title="Orange" style="background:linear-gradient(135deg,#fb923c 50%,#2a1708 50%)"></button>
+        <button data-theme="ice" title="Ice" style="background:linear-gradient(135deg,#bfdbfe 50%,#10243b 50%)"></button>
       </div>
+      <label>Layout design</label>
+      <select id="layoutSelect">
+        <option value="classic">Classic gradient</option>
+        <option value="centered">Centered profile</option>
+        <option value="minimal">Minimal clean</option>
+        <option value="editorial">Editorial split</option>
+      </select>
+      <div class="hint">Switch layouts instantly. Your live preview updates as you edit.</div>
       <div class="row">
         <div><label>Background</label><input type="color" data-t="bg"></div>
         <div><label>Accent</label><input type="color" data-t="accent"></div>
@@ -147,6 +163,12 @@
         <option value="'Poppins', system-ui, sans-serif">Modern (Poppins)</option>
         <option value="Georgia, serif">Classic (Georgia)</option>
         <option value="'Trebuchet MS', sans-serif">Friendly (Trebuchet)</option>
+        <option value="'DM Sans', sans-serif">DM Sans</option>
+        <option value="'Manrope', sans-serif">Manrope</option>
+        <option value="'Montserrat', sans-serif">Montserrat</option>
+        <option value="'Space Grotesk', sans-serif">Space Grotesk</option>
+        <option value="'Playfair Display', serif">Playfair Display</option>
+        <option value="'Roboto Mono', monospace">Roboto Mono</option>
         <option value="'Courier New', monospace">Typewriter</option>
       </select>
     </div>
